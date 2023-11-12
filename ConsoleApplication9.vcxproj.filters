@@ -62,5 +62,11 @@
     <ClInclude Include="VoronoiDiagram.hh">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Customer.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Facility.hh">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

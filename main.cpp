@@ -8,20 +8,26 @@
 // My includes
 #include "FortuneAlgorithm.hh"
 
+#include "Customer.hh"
+
+#include "Facility.hh"
+
+
 constexpr float WINDOW_WIDTH = 600.0f;
 constexpr float WINDOW_HEIGHT = 600.0f;
 constexpr float POINT_RADIUS = 0.005f;
 constexpr float OFFSET = 1.0f;
 
-std::vector<Vector2> generatePoints(int nbPoints)
-{
+std::vector<Vector2> generatePoints(int nbCustomers, int nbFacilities) {
     uint64_t seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::cout << "seed: " << seed << '\n';
     std::default_random_engine generator(seed);
     std::uniform_real_distribution<double> distribution(0.0, 1.0);
 
     std::vector<Vector2> points;
-    for (int i = 0; i < nbPoints; ++i)
+    for (int i = 0; i < nbCustomers; ++i)
+        points.push_back(Vector2{ distribution(generator), distribution(generator) });
+
+    for (int i = 0; i < nbFacilities; ++i)
         points.push_back(Vector2{ distribution(generator), distribution(generator) });
 
     return points;
@@ -83,17 +89,50 @@ void drawDiagram(sf::RenderWindow& window, VoronoiDiagram& diagram)
     }
 }
 
-VoronoiDiagram generateRandomDiagram(std::size_t nbPoints)
-{
-    // Generate points
-    std::vector<Vector2> points = generatePoints(nbPoints);
+std::vector<Customer> generateCustomers(int nbCustomers) {
+    uint64_t seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+    std::uniform_real_distribution<double> distribution(0.0, 1.0);
+
+    std::vector<Customer> customers;
+    for (int i = 0; i < nbCustomers; ++i)
+        customers.emplace_back(Customer{ Vector2{distribution(generator), distribution(generator)} });
+
+    return customers;
+}
+
+std::vector<Facility> generateFacilities(int nbFacilities) {
+    uint64_t seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+    std::uniform_real_distribution<double> distribution(0.0, 1.0);
+
+    std::vector<Facility> facilities;
+    for (int i = 0; i < nbFacilities; ++i)
+        facilities.emplace_back(Facility{ Vector2{distribution(generator), distribution(generator)} });
+
+    return facilities;
+}
+
+
+
+VoronoiDiagram generateRandomDiagram(const std::vector<Customer>& customers, const std::vector<Facility>& facilities) {
+    // Combine customer and facility points for Voronoi diagram generation
+    std::vector<Vector2> allPoints;
+    for (const auto& customer : customers) {
+        allPoints.push_back(customer.position);
+    }
+    for (const auto& facility : facilities) {
+        allPoints.push_back(facility.position);
+    }
 
     // Construct diagram
-    FortuneAlgorithm algorithm(points);
+    FortuneAlgorithm algorithm(allPoints);
     auto start = std::chrono::steady_clock::now();
     algorithm.construct();
     auto duration = std::chrono::steady_clock::now() - start;
     std::cout << "construction: " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << "ms" << '\n';
+
+    // (rest of the function remains unchanged)
 
     // Bound the diagram
     start = std::chrono::steady_clock::now();
@@ -108,15 +147,27 @@ VoronoiDiagram generateRandomDiagram(std::size_t nbPoints)
     duration = std::chrono::steady_clock::now() - start;
     std::cout << "intersection: " << std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() << "ms" << '\n';
     if (!valid)
-        throw std::runtime_error("An error occured in the box intersection algorithm");
+        throw std::runtime_error("An error occurred in the box intersection algorithm");
 
     return diagram;
+
 }
+
+
 
 int main()
 {
+    std::size_t nbCustomers = 50;
+    std::size_t nbFacilities = 10;
+
+    // Generate customers and facilities
+    std::vector<Customer> customers = generateCustomers(nbCustomers);
+    std::vector<Facility> facilities = generateFacilities(nbFacilities);
+
+    // Generate Voronoi diagram using customer and facility points
+    VoronoiDiagram diagram = generateRandomDiagram(customers, facilities);
+
     std::size_t nbPoints = 100;
-    VoronoiDiagram diagram = generateRandomDiagram(nbPoints);
 
     // Display the diagram
     sf::ContextSettings settings;
@@ -132,7 +183,14 @@ int main()
             if (event.type == sf::Event::Closed)
                 window.close();
             else if (event.type == sf::Event::KeyReleased && event.key.code == sf::Keyboard::Key::N)
-                diagram = generateRandomDiagram(nbPoints);
+            {
+                // Generate customers and facilities
+                customers = generateCustomers(nbCustomers);
+                facilities = generateFacilities(nbFacilities);
+
+                // Generate Voronoi diagram using customer and facility points
+                diagram = generateRandomDiagram(customers, facilities);
+            }
         }
 
         window.clear(sf::Color::Black);

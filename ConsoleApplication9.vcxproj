@@ -139,7 +139,9 @@
     <ClInclude Include="Arc.hh" />
     <ClInclude Include="Beachline.hh" />
     <ClInclude Include="Box.hh" />
+    <ClInclude Include="Customer.hh" />
     <ClInclude Include="Event.hh" />
+    <ClInclude Include="Facility.hh" />
     <ClInclude Include="FortuneAlgorithm.hh" />
     <ClInclude Include="PriorityQueue.hh" />
     <ClInclude Include="Vector2.hh" />
