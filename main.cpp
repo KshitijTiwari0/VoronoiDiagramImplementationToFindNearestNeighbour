@@ -153,6 +153,59 @@ VoronoiDiagram generateRandomDiagram(const std::vector<Customer>& customers, con
 
 }
 
+std::vector<std::vector<Vector2>> extractVertices(VoronoiDiagram& diagram)
+{
+    std::vector<std::vector<Vector2>> vertices;
+
+    for (std::size_t i = 0; i < diagram.getNbSites(); ++i)
+    {
+        const VoronoiDiagram::Site* site = diagram.getSite(i);
+        VoronoiDiagram::Face* face = site->face;
+        VoronoiDiagram::HalfEdge* halfEdge = face->outerComponent;
+
+        if (halfEdge == nullptr)
+            continue;
+
+        std::vector<Vector2> cellVertices;
+
+        do
+        {
+            if (halfEdge->origin != nullptr)
+            {
+                Vector2 vertex = halfEdge->origin->point;
+                cellVertices.push_back(vertex);
+            }
+
+            halfEdge = halfEdge->next;
+
+        } while (halfEdge != nullptr && halfEdge != face->outerComponent);
+
+        vertices.push_back(cellVertices);
+    }
+
+    return vertices;
+}
+
+Vector2 calculateMean(const std::vector<Vector2>& vertices)
+{
+    Vector2 sum = { 0.0, 0.0 };
+
+    for (const auto& vertex : vertices)
+    {
+        sum.x += vertex.x;
+        sum.y += vertex.y;
+    }
+
+    if (!vertices.empty())
+    {
+        sum.x /= vertices.size();
+        sum.y /= vertices.size();
+    }
+
+    return sum;
+}
+
+
 
 
 int main()
@@ -197,6 +250,15 @@ int main()
 
         drawDiagram(window, diagram);
         drawPoints(window, diagram);
+
+
+        // Extract vertices and calculate mean
+        auto vertices = extractVertices(diagram);
+        for (const auto& cellVertices : vertices)
+        {
+            Vector2 mean = calculateMean(cellVertices);
+            std::cout << "Mean of Voronoi cell: (" << mean.x << ", " << mean.y << ")\n";
+        }
 
         window.display();
     }
