@@ -143,6 +143,7 @@
     <ClInclude Include="Event.hh" />
     <ClInclude Include="Facility.hh" />
     <ClInclude Include="FortuneAlgorithm.hh" />
+    <ClInclude Include="GeometryUtils.hh" />
     <ClInclude Include="PriorityQueue.hh" />
     <ClInclude Include="Vector2.hh" />
     <ClInclude Include="VoronoiDiagram.hh" />

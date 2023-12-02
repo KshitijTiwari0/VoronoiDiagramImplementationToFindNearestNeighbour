@@ -11,12 +11,36 @@
 #include "Customer.hh"
 
 #include "Facility.hh"
-
+#include "GeometryUtils.hh"
 
 constexpr float WINDOW_WIDTH = 600.0f;
 constexpr float WINDOW_HEIGHT = 600.0f;
 constexpr float POINT_RADIUS = 0.005f;
 constexpr float OFFSET = 1.0f;
+
+Vector2 calculateMean(const std::vector<Vector2>& vertices);
+
+
+Facility findRegionAndFacility(const Vector2& mean, const std::vector<std::vector<Vector2>>& facilityVertices, const std::vector<Facility>& facilities)
+{
+    for (std::size_t i = 0; i < facilityVertices.size(); ++i)
+    {
+        const std::vector<Vector2>& cellVertices = facilityVertices[i];
+
+        // Calculate the mean of Voronoi cell vertices
+        Vector2 cellMean = calculateMean(cellVertices);
+
+        // Check if the overall mean lies within the Voronoi cell
+        if (isPointInPolygon(mean, cellVertices))
+        {
+            // If found, return the corresponding facility
+            return facilities[i];
+        }
+    }
+
+    // If no matching region is found, return an "invalid" facility
+    return Facility{ Vector2{-1.0, -1.0} }; // You might want to handle this case differently based on your requirements
+}
 
 std::vector<Vector2> generatePoints(int nbCustomers, int nbFacilities) {
     uint64_t seed = std::chrono::system_clock::now().time_since_epoch().count();
@@ -167,6 +191,8 @@ std::vector<std::vector<Vector2>> extractVertices(VoronoiDiagram& diagram)
             continue;
 
         std::vector<Vector2> cellVertices;
+        VoronoiDiagram::HalfEdge* start = halfEdge;
+        std::size_t iterationCounter = 0;
 
         do
         {
@@ -177,14 +203,24 @@ std::vector<std::vector<Vector2>> extractVertices(VoronoiDiagram& diagram)
             }
 
             halfEdge = halfEdge->next;
+            ++iterationCounter;
 
-        } while (halfEdge != nullptr && halfEdge != face->outerComponent);
+            if (iterationCounter >= 1000)
+            {
+                std::cerr << "Warning: Maximum iteration limit reached for Voronoi cell " << i << ". Possible construction issue.\n";
+                // Break or handle the situation as appropriate
+                break;
+            }
+
+        } while (halfEdge != nullptr && halfEdge != start);
 
         vertices.push_back(cellVertices);
     }
 
     return vertices;
 }
+
+
 
 Vector2 calculateMean(const std::vector<Vector2>& vertices)
 {
@@ -227,8 +263,10 @@ int main()
     settings.antialiasingLevel = 8;
     sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Fortune's algorithm", sf::Style::Default, settings);
     window.setView(sf::View(sf::FloatRect(-0.1f, -0.1f, 1.2f, 1.2f)));
+    const int MAX_ITERATIONS = 10000;  // Set a reasonable maximum iteration count
+    int iterationCount = 0;
 
-    while (window.isOpen())
+    while (window.isOpen() && iterationCount < MAX_ITERATIONS)
     {
         sf::Event event;
         while (window.pollEvent(event))
@@ -246,19 +284,36 @@ int main()
             }
         }
 
+        // Rest of your loop code...
+
         window.clear(sf::Color::Black);
 
         drawDiagram(window, diagram);
         drawPoints(window, diagram);
 
-
-        // Extract vertices and calculate mean
+        // Extract vertices and calculate mean for each cell
         auto vertices = extractVertices(diagram);
         for (const auto& cellVertices : vertices)
         {
             Vector2 mean = calculateMean(cellVertices);
             std::cout << "Mean of Voronoi cell: (" << mean.x << ", " << mean.y << ")\n";
         }
+
+        // Find the region and corresponding facility for the overall mean
+        Vector2 overallMean = calculateMean(vertices[0]);  // Assuming you want the mean of the first cell
+        Facility regionFacility = findRegionAndFacility(overallMean, vertices, facilities);
+
+        if (regionFacility.position.x >= 0.0 && regionFacility.position.y >= 0.0)
+        {
+            std::cout << "Facility in the region: (" << regionFacility.position.x << ", " << regionFacility.position.y << ")\n";
+        }
+        else
+        {
+            std::cout << "No matching facility found for the overall mean.\n";
+        }
+
+        // Increment iteration count
+        ++iterationCount;
 
         window.display();
     }

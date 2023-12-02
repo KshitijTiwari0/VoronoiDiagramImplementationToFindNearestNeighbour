@@ -44,3 +44,4 @@ Vector2 operator*(double t, Vector2 vec);
 Vector2 operator*(Vector2 vec, double t);
 std::ostream& operator<<(std::ostream& os, const Vector2& vec);
 
+
