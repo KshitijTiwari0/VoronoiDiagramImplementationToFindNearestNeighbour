@@ -63,6 +63,16 @@ double Vector2::getDet(const Vector2& other) const
     return x * other.y - y * other.x;
 }
 
+bool Vector2::operator==(const Vector2& other) const
+{
+    return false;
+}
+
+bool Vector2::areEqual(const Vector2& v1, const Vector2& v2, double tolerance)
+{
+    return false;
+}
+
 Vector2 operator+(Vector2 lhs, const Vector2& rhs)
 {
     lhs += rhs;

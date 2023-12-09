@@ -5,6 +5,8 @@
 #include <random>
 // SFML
 #include <SFML/Graphics.hpp>
+#include <SFML/Graphics/Text.hpp>
+#include <SFML/Graphics/Font.hpp>
 // My includes
 #include "FortuneAlgorithm.hh"
 
@@ -38,10 +40,9 @@ Facility findRegionAndFacility(const Vector2& mean, const std::vector<std::vecto
         }
     }
 
-    // If no matching region is found, return an "invalid" facility
-    return Facility{ Vector2{-1.0, -1.0} }; // You might want to handle this case differently based on your requirements
+    // If no matching region is found, return a default facility
+    return Facility{ Vector2{0.0, 0.0} };
 }
-
 std::vector<Vector2> generatePoints(int nbCustomers, int nbFacilities) {
     uint64_t seed = std::chrono::system_clock::now().time_since_epoch().count();
     std::default_random_engine generator(seed);
@@ -75,10 +76,23 @@ void drawEdge(sf::RenderWindow& window, Vector2 origin, Vector2 destination, sf:
     window.draw(line, 2, sf::Lines);
 }
 
-void drawPoints(sf::RenderWindow& window, VoronoiDiagram& diagram)
+void drawPoints(sf::RenderWindow& window, VoronoiDiagram& diagram, const Facility& identifiedFacility)
 {
+    const double tolerance = 1e-6;  // Adjust the tolerance as needed
+
     for (std::size_t i = 0; i < diagram.getNbSites(); ++i)
-        drawPoint(window, diagram.getSite(i)->point, sf::Color(100, 250, 50));
+    {
+        const VoronoiDiagram::Site* site = diagram.getSite(i);
+        sf::Color color = sf::Color(100, 250, 50);
+
+        // Check if the site corresponds to the identified facility
+        if (Vector2::areEqual(site->point, identifiedFacility.position, tolerance))
+        {
+            color = sf::Color::Blue; // Use blue for the identified facility
+        }
+
+        drawPoint(window, site->point, color);
+    }
 }
 
 void drawDiagram(sf::RenderWindow& window, VoronoiDiagram& diagram)
@@ -261,47 +275,22 @@ int main()
     // Display the diagram
     sf::ContextSettings settings;
     settings.antialiasingLevel = 8;
-    sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Fortune's algorithm", sf::Style::Default, settings);
+    sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Fortune's Algorithm Visualization", sf::Style::Default, settings);
     window.setView(sf::View(sf::FloatRect(-0.1f, -0.1f, 1.2f, 1.2f)));
-    const int MAX_ITERATIONS = 10000;  // Set a reasonable maximum iteration count
+    const int MAX_ITERATIONS = 100;  // Set a reasonable maximum iteration count
     int iterationCount = 0;
 
-    while (window.isOpen() && iterationCount < MAX_ITERATIONS)
+    Facility regionFacility;  // Declare regionFacility outside the loop
+    auto vertices = extractVertices(diagram);
+
+    // Loop to visualize Voronoi cell means
+    for (const auto& cellVertices : vertices)
     {
-        sf::Event event;
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed)
-                window.close();
-            else if (event.type == sf::Event::KeyReleased && event.key.code == sf::Keyboard::Key::N)
-            {
-                // Generate customers and facilities
-                customers = generateCustomers(nbCustomers);
-                facilities = generateFacilities(nbFacilities);
+        Vector2 mean = calculateMean(cellVertices);
+        std::cout << "Mean of Voronoi cell: (" << mean.x << ", " << mean.y << ")\n";
 
-                // Generate Voronoi diagram using customer and facility points
-                diagram = generateRandomDiagram(customers, facilities);
-            }
-        }
-
-        // Rest of your loop code...
-
-        window.clear(sf::Color::Black);
-
-        drawDiagram(window, diagram);
-        drawPoints(window, diagram);
-
-        // Extract vertices and calculate mean for each cell
-        auto vertices = extractVertices(diagram);
-        for (const auto& cellVertices : vertices)
-        {
-            Vector2 mean = calculateMean(cellVertices);
-            std::cout << "Mean of Voronoi cell: (" << mean.x << ", " << mean.y << ")\n";
-        }
-
-        // Find the region and corresponding facility for the overall mean
-        Vector2 overallMean = calculateMean(vertices[0]);  // Assuming you want the mean of the first cell
-        Facility regionFacility = findRegionAndFacility(overallMean, vertices, facilities);
+        // Find the region and corresponding facility for the current cell
+        Facility regionFacility = findRegionAndFacility(mean, vertices, facilities);
 
         if (regionFacility.position.x >= 0.0 && regionFacility.position.y >= 0.0)
         {
@@ -309,14 +298,42 @@ int main()
         }
         else
         {
-            std::cout << "No matching facility found for the overall mean.\n";
+            std::cout << "No matching facility found for the current cell mean.\n";
         }
+    }
+
+    // Main rendering loop
+    while (window.isOpen())
+    {
+        // Handle events
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+                window.close();
+            else if (event.type == sf::Event::KeyReleased && event.key.code == sf::Keyboard::Key::N)
+            {
+                // Generate new data and reset visualization
+                customers = generateCustomers(nbCustomers);
+                facilities = generateFacilities(nbFacilities);
+                diagram = generateRandomDiagram(customers, facilities);
+                regionFacility = Facility{ Vector2{-1.0, -1.0} };  // Reset regionFacility
+            }
+        }
+
+        // Render and visualize Voronoi diagram
+        window.clear(sf::Color::Black);
+        drawDiagram(window, diagram);
+        drawPoints(window, diagram, regionFacility);  // Pass the identified facility
+
+        // Add labels or comments here to explain the visualization
 
         // Increment iteration count
         ++iterationCount;
 
         window.display();
     }
+
 
     return 0;
 }

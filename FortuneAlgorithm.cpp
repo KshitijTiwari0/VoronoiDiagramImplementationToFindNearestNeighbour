@@ -7,6 +7,7 @@
 FortuneAlgorithm::FortuneAlgorithm(std::vector<Vector2> points) : mDiagram(std::move(points))
 {
 
+
 }
 
 FortuneAlgorithm::~FortuneAlgorithm() = default;
